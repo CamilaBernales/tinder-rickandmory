@@ -1,4 +1,5 @@
 import {loginWithGoogle, signOutGoogle} from '../firebase'
+import {recoverFavsAction} from './charsDuck'
 
 const initialData = {
     loggedIn : false,
@@ -13,17 +14,17 @@ const LOG_OUT = "LOG_OUT"
 
 
 export default function reducer( state = initialData, action){
-    switch (action.type) {
+    switch(action.type){
+        case LOG_OUT:
+            return {...initialData}
         case LOGIN:
-            return{...state, fetching:true}
-        case LOGIN_SUCCESS:
-            return{...state, fetching:false, ...action.payload, loggedIn: true}   
+            return{...state, fetching: true}
         case LOGIN_ERROR:
             return{...state, fetching:false}
-        case LOG_OUT:
-            return {...state, fetching:false, ...action.payload}
+        case LOGIN_SUCCESS:
+            return{ ...state, fetching: false, ...action.payload, loggedIn: true}
         default:
-            return state;
+            return state
     }
 }
 function saveStore(storage){
@@ -46,6 +47,7 @@ export const  doGoogleLoginAction = () => (dispatch, getState) => {
             }
         })
         saveStore(getState())
+        recoverFavsAction()(dispatch, getState)
     })
     .catch(e => {
         dispatch({
@@ -56,6 +58,18 @@ export const  doGoogleLoginAction = () => (dispatch, getState) => {
 
 }
 
+export const restoreSessionAction = () => dispatch => {
+
+    let storage = localStorage.getItem('storage')
+    storage = JSON.parse(storage)
+    if(storage && storage.user){
+        dispatch({
+            type: LOGIN_SUCCESS,
+            payload: storage.user
+        })
+    }
+}
+
 export const logOutAction = () => (dispatch, getState) => {
 
     signOutGoogle()
@@ -63,4 +77,5 @@ export const logOutAction = () => (dispatch, getState) => {
         type: LOG_OUT
     })
     localStorage.removeItem('storage');
+    localStorage.removeItem('favs');
 }

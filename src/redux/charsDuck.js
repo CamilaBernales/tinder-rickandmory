@@ -1,5 +1,5 @@
 import axios from 'axios'
-import{updateDB} from '../firebase'
+import{updateDB, getFavs} from '../firebase'
 
 const initialData = {
 
@@ -36,12 +36,22 @@ export default function reducer(state = initialData, action){
             return {...state, array: action.payload}
         case ADD_TO_FAVORITES:
             return {...state, ... action.payload}
+        case GET_FAVS:
+            return {...state, fetching: true}
+        case GET_FAVS_SUCCESS:
+            return{...state, fetching: false, favorites: action.payload}
+        case GET_FAVS_ERROR:
+            return{...state, fetching: false, error: action.payload}
             default:
                 return state
     }
 
 }
 
+function saveStorage(key, storage){
+    storage = JSON.stringify(storage)
+    localStorage.setItem(key, storage)
+}
 
 export const getCharactersAction = () => (dispatch, gestate) => {
 
@@ -70,8 +80,8 @@ export const removeCharsAction = () => (dispatch, getState) => {
     array.shift()
     if(!array.length){
 
-            getCharactersAction()(dispatch, getState)
-            return
+        getCharactersAction()(dispatch, getState)
+        return
     }
     dispatch({
         type: REMOVE_CHARACTER,
@@ -91,7 +101,41 @@ export const addToFavoritesAction = () => (dispatch, getState) => {
         type: ADD_TO_FAVORITES,
         payload: {array: [...array], favorites:[...favorites]}
     })
-    
+    saveStorage('favs', favorites)
+}
 
+
+export const recoverFavsAction = () => (dispatch, getState) => {
+    dispatch({
+        type: GET_FAVS
+    })
+
+    const {uid} = getState().user
+    return getFavs(uid)
+        .then(favs => {
+            dispatch({
+                type: GET_FAVS_SUCCESS,
+                payload: [...favs]
+            })
+            saveStorage('favs',[...favs])  
+        })
+        .catch(e => {
+            dispatch({
+                type: GET_FAVS_ERROR,
+                payload: e.message
+            })
+        })
+}
+
+export const restoreFavsAction = () => (dispatch, getState) => {
+
+    let favs = localStorage.getItem('favs');
+    favs = JSON.parse(favs);
+    if(favs && favs.length > 0){
+        dispatch({
+            type: GET_FAVS_SUCCESS,
+            payload:favs
+        })
+    }
 
 }
